@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	_ "image/png"
 	"log"
@@ -19,15 +20,18 @@ func run(src, dst string) error {
 	}
 	defer f.Close()
 
-	bw := NewBPP2Writer(f)
+	bw := bufio.NewWriter(f)
 	defer bw.Flush()
 
 	for i, tile := range ti.Tiles() {
 		bpps := EncodeTile(tile)
+		var buf [2]byte
 		for _, bpp2 := range bpps {
-			bw.Write(bpp2)
+			buf[0] = byte(bpp2 >> 8)
+			buf[1] = byte(bpp2)
+			bw.Write(buf[:])
 		}
-		fmt.Printf("i: %d, data: %04x\n", i, bpps)
+		fmt.Printf("TileID: %d, data: %04x\n", i, bpps)
 	}
 	return nil
 }
