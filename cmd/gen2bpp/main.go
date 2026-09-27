@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/binary"
 	"fmt"
 	_ "image/png"
 	"log"
@@ -25,12 +26,7 @@ func run(src, dst string) error {
 
 	for i, tile := range ti.Tiles() {
 		bpps := EncodeTile(tile)
-		var buf [2]byte
-		for _, bpp2 := range bpps {
-			buf[0] = byte(bpp2 >> 8)
-			buf[1] = byte(bpp2)
-			bw.Write(buf[:])
-		}
+		binary.Write(bw, binary.NativeEndian, bpps)
 		fmt.Printf("TileID: %d, data: %04x\n", i, bpps)
 	}
 	return nil

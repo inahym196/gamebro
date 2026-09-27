@@ -5,29 +5,26 @@ import (
 	"image"
 	"image/color"
 	"iter"
-	"math/bits"
 	"os"
 )
 
 type Tile [8][8]uint8
 
-// タイルの一行分の色コードを受け取り、2bpp(16bit)に変換して返す
-func Encode2bpp(colors [8]uint8) uint16 {
-	var lowByte, highByte uint8
+// タイルの一行分の色コードを受け取り、2bpp(lo, hi byte)に変換して返す
+func Encode2bpp(colors [8]uint8) (lo, hi byte) {
 	for i, c := range colors {
-		lo := c & 1
-		hi := (c >> 1) & 1
-		lowByte |= lo << i
-		highByte |= hi << i
+		shift := 7 - i
+		lo |= c & 1 << shift
+		hi |= (c >> 1) & 1 << shift
 	}
-	lowByte = bits.Reverse8(lowByte)
-	highByte = bits.Reverse8(highByte)
-	return uint16(lowByte)<<8 | uint16(highByte)
+	return lo, hi
 }
 
-func EncodeTile(tile Tile) (bpps [8]uint16) {
+func EncodeTile(tile Tile) (bpps [8][2]byte) {
 	for iy := range 8 {
-		bpps[iy] = Encode2bpp(tile[iy])
+		lo, hi := Encode2bpp(tile[iy])
+		bpps[iy][0] = lo
+		bpps[iy][1] = hi
 	}
 	return bpps
 }
