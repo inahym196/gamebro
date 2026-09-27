@@ -61,32 +61,27 @@ func isDir(path string) bool {
 	return info.IsDir()
 }
 
-func main() {
-	if len(os.Args) < 3 {
-		fmt.Printf("エラー: 2つの引数: src,dstが必要です\n")
-		fmt.Printf("例: `go run ./cmd/gen2bpp ./assets/src ./assets/dst`\n")
-		os.Exit(1)
+func run(args []string) error {
+	if len(args) < 3 {
+		return fmt.Errorf("エラー: 2つの引数: src,dstが必要です\n")
 	}
-
-	src := os.Args[1]
-	dst := os.Args[2]
+	src := args[1]
+	dst := args[2]
 
 	if !isDir(dst) {
-		fmt.Printf("エラー: dst '%s'は有効なディレクトリではありません", dst)
-		os.Exit(1)
+		return fmt.Errorf("エラー: dst '%s'は有効なディレクトリではありません", dst)
 	}
 
 	matches, err := filepath.Glob(filepath.Join(src, "*"))
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	info, err := os.Stat(dst)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	if !info.IsDir() {
-		fmt.Printf("dst: %sはディレクトリではありません\n", dst)
-		os.Exit(1)
+		return fmt.Errorf("dst: %sはディレクトリではありません\n", dst)
 	}
 
 	for _, path := range matches {
@@ -94,7 +89,15 @@ func main() {
 			continue
 		}
 		if err := runDir(path, dst); err != nil {
-			log.Fatalf("error in dir %s: %v", path, err)
+			return fmt.Errorf("error in dir %s: %v", path, err)
 		}
+	}
+	return nil
+}
+
+func main() {
+	if err := run(os.Args); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 }
