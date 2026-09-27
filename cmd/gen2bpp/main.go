@@ -7,6 +7,7 @@ import (
 	_ "image/png"
 	"log"
 	"os"
+	"path/filepath"
 )
 
 func run(src, dst string) error {
@@ -33,7 +34,21 @@ func run(src, dst string) error {
 }
 
 func main() {
-	if err := run("./assets/dog.png", "./assets/dog.rom"); err != nil {
+	dirs, err := filepath.Glob("./assets/src/*")
+	if err != nil {
 		log.Fatal(err)
+	}
+	for _, dir := range dirs {
+		dirName := filepath.Base(dir)
+		romPath := filepath.Join("assets/", dirName+".rom")
+		files, err := filepath.Glob(filepath.Join(dir, "*.png"))
+		if err != nil {
+			log.Fatal(err)
+		}
+		for _, file := range files {
+			if err := run(file, romPath); err != nil {
+				log.Fatal(err)
+			}
+		}
 	}
 }
