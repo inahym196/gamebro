@@ -7,14 +7,15 @@ import (
 	"os"
 )
 
-func main() {
-	ti, err := NewTilesImage("assets/dog.png")
+func run(src, dst string) error {
+	ti, err := NewTilesImage(src)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	f, err := os.Create("./assets/dog.rom")
+
+	f, err := os.Create(dst)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer f.Close()
 
@@ -27,5 +28,12 @@ func main() {
 			bw.Write(bpp2)
 		}
 		fmt.Printf("i: %d, data: %04x\n", i, bpps)
+	}
+	return nil
+}
+
+func main() {
+	if err := run("./assets/dog.png", "./assets/dog.rom"); err != nil {
+		log.Fatal(err)
 	}
 }
