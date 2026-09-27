@@ -32,7 +32,15 @@ type Game struct {
 	pixels [16 * 16 * 4]byte
 }
 
-func (g *Game) Update() error { return nil }
+func (g *Game) Update() error {
+	for i, color := range dogTile {
+		g.pixels[i*4+0] = colorMap(color)
+		g.pixels[i*4+1] = colorMap(color)
+		g.pixels[i*4+2] = colorMap(color)
+		g.pixels[i*4+3] = 0xff
+	}
+	return nil
+}
 
 func colorMap(color byte) byte {
 	switch color {
@@ -49,12 +57,6 @@ func colorMap(color byte) byte {
 	}
 }
 func (g *Game) Draw(screen *ebiten.Image) {
-	for i, color := range dogTile {
-		g.pixels[i*4+0] = colorMap(color)
-		g.pixels[i*4+1] = colorMap(color)
-		g.pixels[i*4+2] = colorMap(color)
-		g.pixels[i*4+3] = 0xff
-	}
 	screen.WritePixels(g.pixels[:])
 }
 func (g *Game) Layout(_, _ int) (int, int) { return ScreenWidth, ScreenHeight }
