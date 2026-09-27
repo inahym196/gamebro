@@ -1,14 +1,12 @@
-package main
+package gamebro
 
 import (
-	"log"
-
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
 const (
-	screenWidth  = 16
-	screenHeight = 16
+	ScreenWidth  = 16
+	ScreenHeight = 16
 )
 
 var dogTile = [16 * 16]byte{
@@ -59,11 +57,4 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	screen.WritePixels(g.pixels[:])
 }
-func (g *Game) Layout(_, _ int) (int, int) { return screenWidth, screenHeight }
-
-func main() {
-	ebiten.SetWindowSize(screenWidth*20, screenHeight*20)
-	if err := ebiten.RunGame(&Game{}); err != nil {
-		log.Fatal(err)
-	}
-}
+func (g *Game) Layout(_, _ int) (int, int) { return ScreenWidth, ScreenHeight }
