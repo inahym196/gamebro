@@ -29,6 +29,10 @@ type Game struct {
 	mmu    *MMU
 }
 
+func (g *Game) readTile(addr uint16) byte {
+	return g.mmu.Read(0x8000 + addr)
+}
+
 func (g *Game) readTileRow(tileX, tileY, offsetY int) (lo, hi byte) {
 	if tileX < 0 || tileX >= 2 {
 		log.Fatalf("tileX out of range: %d", tileX)
@@ -36,8 +40,8 @@ func (g *Game) readTileRow(tileX, tileY, offsetY int) (lo, hi byte) {
 	if tileY < 0 || tileY >= 2 {
 		log.Fatalf("tileY out of range: %d", tileY)
 	}
-	baseAddr := tileX*16 + tileY*32 + offsetY*2
-	return g.mmu.ReadTile(baseAddr), g.mmu.ReadTile(baseAddr + 1)
+	baseAddr := uint16(tileX*16 + tileY*32 + offsetY*2)
+	return g.readTile(baseAddr), g.readTile(baseAddr + 1)
 }
 
 func colorMap(colorID int, palette uint8) byte {

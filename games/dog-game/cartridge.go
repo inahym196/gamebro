@@ -9,13 +9,27 @@ import (
 //go:embed assets/sprite.rom
 var spriteData []byte
 
+//go:embed assets/bg.rom
+var bgData []byte
+
+//go:embed assets/tilemap.rom
+var tmapData []byte
+
 type DogGame struct {
 	init   bool
+	mmu    *gamebro.MMU
+	bg     []byte
 	sprite []byte
+	tmap   []byte
 }
 
 func NewDogGame() *DogGame {
-	return &DogGame{init: true, sprite: spriteData}
+	return &DogGame{
+		init:   true,
+		bg:     bgData,
+		sprite: spriteData,
+		tmap:   tmapData,
+	}
 }
 
 func (g *DogGame) fetchRomTile(id int) (tile [16]byte) {
@@ -26,13 +40,19 @@ func (g *DogGame) fetchRomTile(id int) (tile [16]byte) {
 	return tile
 }
 
+func (g *DogGame) writeTile(addr uint16, data byte) {
+	g.mmu.Write(addr+0x8000, data)
+}
+
 func (g *DogGame) Code(mmu *gamebro.MMU) {
 	if g.init {
 		g.init = false
+		g.mmu = mmu
 		for tileID := range 4 {
 			tile := g.fetchRomTile(tileID)
+			base := uint16(tileID << 4)
 			for i, b := range tile {
-				mmu.WriteTile(tileID*16+i, b)
+				g.writeTile(base+uint16(i), b)
 			}
 		}
 	}
