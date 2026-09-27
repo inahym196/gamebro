@@ -17,7 +17,7 @@ var tmapData []byte
 
 type DogGame struct {
 	init   bool
-	mmu    *gamebro.MMU
+	cpu    *gamebro.CPU
 	bg     []byte
 	sprite []byte
 	tmap   []byte
@@ -41,13 +41,13 @@ func (g *DogGame) fetchRomTile(id int) (tile [16]byte) {
 }
 
 func (g *DogGame) writeTile(addr uint16, data byte) {
-	g.mmu.Write(addr+0x8000, data)
+	g.cpu.Write(addr+0x8000, data)
 }
 
-func (g *DogGame) Code(mmu *gamebro.MMU) {
+func (g *DogGame) Code(cpu *gamebro.CPU) {
 	if g.init {
 		g.init = false
-		g.mmu = mmu
+		g.cpu = cpu
 		for tileID := range 4 {
 			tile := g.fetchRomTile(tileID)
 			base := uint16(tileID << 4)

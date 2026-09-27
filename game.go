@@ -12,25 +12,24 @@ const (
 )
 
 type cartridge interface {
-	Code(mmu *MMU)
+	Code(cpu *CPU)
 }
 
 func NewGame(crt cartridge) *Game {
-	mmu := &MMU{}
 	return &Game{
 		crt: crt,
-		mmu: mmu,
+		cpu: NewCPU(crt),
 	}
 }
 
 type Game struct {
 	crt    cartridge
 	pixels [16 * 16 * 4]byte
-	mmu    *MMU
+	cpu    *CPU
 }
 
 func (g *Game) readTile(addr uint16) byte {
-	return g.mmu.Read(0x8000 + addr)
+	return g.cpu.Read(0x8000 + addr)
 }
 
 func (g *Game) readTileRow(tileX, tileY, offsetY int) (lo, hi byte) {
@@ -78,7 +77,7 @@ func (g *Game) renderScanline(ly int) {
 }
 
 func (g *Game) Update() error {
-	g.crt.Code(g.mmu)
+	g.cpu.Step()
 	for ly := range 16 {
 		g.renderScanline(ly)
 	}

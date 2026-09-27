@@ -2,31 +2,37 @@ package gamebro
 
 import "log/slog"
 
-type MMU struct {
+type mmu struct {
 	tiles   [16 * 8 * 3 * 8 * 2]byte
 	tileMap [2 * 32 * 32]byte
 	crt     cartridge
 }
 
-func (m *MMU) Write(addr uint16, data byte) {
+type CPU struct {
+	*mmu
+}
+
+func NewCPU(crt cartridge) *CPU {
+	return &CPU{&mmu{crt: crt}}
+}
+
+func (cpu *CPU) Write(addr uint16, data byte) {
 	switch {
 	case addr >= 0x8000 && addr < 0xA000:
-		m.tiles[addr-0x8000] = data
+		cpu.tiles[addr-0x8000] = data
 	default:
 		slog.Error("not impl yet")
 	}
 }
 
-func (m *MMU) Read(addr uint16) byte {
+func (cpu *CPU) Read(addr uint16) byte {
 	switch {
 	case addr >= 0x8000 && addr < 0xA000:
-		return m.tiles[addr-0x8000]
+		return cpu.tiles[addr-0x8000]
 	default:
 		slog.Error("not impl yet")
 		return 0xFF
 	}
 }
 
-func (m *MMU) ReadCode() func(mmu *MMU) {
-	return m.crt.Code
-}
+func (cpu *CPU) Step() { cpu.crt.Code(cpu) }
