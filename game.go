@@ -2,6 +2,7 @@ package gamebro
 
 import (
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/inahym196/gamebro/games/dog-game"
 )
 
 const (
@@ -28,11 +29,19 @@ var dogTile = [16 * 16]byte{
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 }
 
+func NewGame(crt *dog.DogGame) *Game {
+	return &Game{
+		crt: crt,
+	}
+}
+
 type Game struct {
+	crt    *dog.DogGame
 	pixels [16 * 16 * 4]byte
 }
 
 func (g *Game) Update() error {
+	g.crt.Code()
 	for i, color := range dogTile {
 		g.pixels[i*4+0] = colorMap(color)
 		g.pixels[i*4+1] = colorMap(color)
