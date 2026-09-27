@@ -1,8 +1,9 @@
 package gamebro
 
 import (
+	"log"
+
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/inahym196/gamebro/games/dog-game"
 )
 
 const (
@@ -10,61 +11,76 @@ const (
 	ScreenHeight = 16
 )
 
-var dogTile = [16 * 16]byte{
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 3, 3, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 0, 0,
-	0, 3, 2, 3, 0, 0, 0, 0, 3, 2, 3, 0, 0, 0, 0, 0,
-	0, 3, 1, 2, 3, 0, 0, 3, 2, 1, 3, 0, 0, 0, 0, 0,
-	0, 3, 1, 2, 2, 3, 3, 2, 2, 1, 3, 0, 0, 3, 3, 0,
-	0, 3, 2, 2, 2, 1, 2, 2, 2, 2, 3, 0, 3, 2, 2, 3,
-	0, 3, 2, 2, 2, 1, 2, 2, 2, 2, 2, 3, 3, 3, 2, 3,
-	0, 3, 2, 2, 3, 1, 1, 3, 2, 2, 2, 2, 2, 2, 2, 3,
-	3, 2, 1, 1, 1, 3, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3,
-	0, 3, 2, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 0,
-	0, 3, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 0,
-	0, 3, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 3, 0,
-	0, 0, 3, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 3, 0,
-	0, 0, 0, 3, 1, 3, 3, 3, 1, 3, 3, 3, 3, 1, 3, 0,
-	0, 0, 0, 3, 3, 0, 0, 0, 3, 3, 0, 0, 3, 3, 3, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+type cartridge interface {
+	Code(mmu *MMU)
 }
 
-func NewGame(crt *dog.DogGame) *Game {
+func NewGame(crt cartridge) *Game {
+	mmu := &MMU{}
 	return &Game{
 		crt: crt,
+		mmu: mmu,
 	}
 }
 
 type Game struct {
-	crt    *dog.DogGame
+	crt    cartridge
 	pixels [16 * 16 * 4]byte
+	mmu    *MMU
+}
+
+func (g *Game) readTileRow(tileX, tileY, offsetY int) (lo, hi byte) {
+	if tileX < 0 || tileX >= 2 {
+		log.Fatalf("tileX out of range: %d", tileX)
+	}
+	if tileY < 0 || tileY >= 2 {
+		log.Fatalf("tileY out of range: %d", tileY)
+	}
+	baseAddr := tileX*16 + tileY*32 + offsetY*2
+	return g.mmu.ReadTile(baseAddr), g.mmu.ReadTile(baseAddr + 1)
+}
+
+func colorMap(colorID int, palette uint8) byte {
+	cmap := [4]uint8{0xFF, 0xAA, 0x55, 0x00}
+	paletteID := int((palette >> (colorID << 1)) & 0b11)
+	return cmap[paletteID]
+}
+
+func toColorIDs(lo, hi byte) [8]int {
+	var cNums [8]int
+	for x := range 8 {
+		shift := 7 - x
+		_lo := (lo >> shift) & 1
+		_hi := (hi >> shift) & 1
+		cNums[x] = int(_hi<<1 | _lo)
+	}
+	return cNums
+}
+
+func (g *Game) renderScanline(ly int) {
+	tileY := ly / 8
+	offsetY := ly % 8
+	for tileX := range 16 / 8 {
+		baseX := tileX * 8
+		for i, cid := range toColorIDs(g.readTileRow(tileX, tileY, offsetY)) {
+			c := colorMap(cid, 0b11100100)
+			idx := (ly*16 + baseX + i) * 4
+			g.pixels[idx] = c
+			g.pixels[idx+1] = c
+			g.pixels[idx+2] = c
+			g.pixels[idx+3] = 255
+		}
+	}
 }
 
 func (g *Game) Update() error {
-	g.crt.Code()
-	for i, color := range dogTile {
-		g.pixels[i*4+0] = colorMap(color)
-		g.pixels[i*4+1] = colorMap(color)
-		g.pixels[i*4+2] = colorMap(color)
-		g.pixels[i*4+3] = 0xff
+	g.crt.Code(g.mmu)
+	for ly := range 16 {
+		g.renderScanline(ly)
 	}
 	return nil
 }
 
-func colorMap(color byte) byte {
-	switch color {
-	case 3:
-		return 0x00
-	case 2:
-		return 0x55
-	case 1:
-		return 0xAA
-	case 0:
-		return 0xFF
-	default:
-		panic("unexpected color")
-	}
-}
 func (g *Game) Draw(screen *ebiten.Image) {
 	screen.WritePixels(g.pixels[:])
 }
