@@ -1,8 +1,6 @@
 package gamebro
 
 import (
-	"log"
-
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -28,19 +26,19 @@ type Game struct {
 	cpu    *CPU
 }
 
-func (g *Game) readTile(addr uint16) byte {
-	return g.cpu.Read(0x8000 + addr)
+func (g *Game) readTileRow(id byte, offsetY int) (lo, hi byte) {
+	base := 0x8000 + uint16(id<<4)
+	return g.cpu.Read(base + uint16(offsetY<<1)), g.cpu.Read(base + uint16(offsetY<<1) + 1)
 }
 
-func (g *Game) readTileRow(tileX, tileY, offsetY int) (lo, hi byte) {
-	if tileX < 0 || tileX >= 2 {
-		log.Fatalf("tileX out of range: %d", tileX)
-	}
-	if tileY < 0 || tileY >= 2 {
-		log.Fatalf("tileY out of range: %d", tileY)
-	}
-	baseAddr := uint16(tileX*16 + tileY*32 + offsetY*2)
-	return g.readTile(baseAddr), g.readTile(baseAddr + 1)
+func (g *Game) fetchBGWindowTileRow(tileX, tileY, offsetY, mapID int) (lo, hi byte) {
+	addr := [2]uint16{0x9800, 0x9C00}[mapID] + uint16(tileY<<5|tileX)
+	tileID := g.cpu.Read(addr)
+	return g.readTileRow(tileID, offsetY)
+}
+
+func (g *Game) fetchBGTileRow(tileX, tileY, offsetY int) (lo, hi byte) {
+	return g.fetchBGWindowTileRow(tileX, tileY, offsetY, 0)
 }
 
 func colorMap(colorID int, palette uint8) byte {
@@ -65,7 +63,8 @@ func (g *Game) renderScanline(ly int) {
 	offsetY := ly % 8
 	for tileX := range 16 / 8 {
 		baseX := tileX * 8
-		for i, cid := range toColorIDs(g.readTileRow(tileX, tileY, offsetY)) {
+		lo, hi := g.fetchBGTileRow(tileX, tileY, offsetY)
+		for i, cid := range toColorIDs(lo, hi) {
 			c := colorMap(cid, 0b11100100)
 			idx := (ly*16 + baseX + i) * 4
 			g.pixels[idx] = c

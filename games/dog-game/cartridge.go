@@ -2,6 +2,7 @@ package dog
 
 import (
 	_ "embed"
+	"log/slog"
 
 	"github.com/inahym196/gamebro"
 )
@@ -35,24 +36,48 @@ func NewDogGame() *DogGame {
 func (g *DogGame) fetchRomTile(id int) (tile [16]byte) {
 	base := id * 16
 	for i := range 16 {
-		tile[i] = g.sprite[base+i]
+		tile[i] = g.bg[base+i]
 	}
 	return tile
 }
 
-func (g *DogGame) writeTile(addr uint16, data byte) {
-	g.cpu.Write(addr+0x8000, data)
+func (g *DogGame) writeTile(id int, tile [16]byte) {
+	if id < 0 || id >= 384 {
+		slog.Error("write tile: out of range", "tileID", id)
+	}
+	base := 0x8000 + uint16(id<<4)
+	for i, data := range tile {
+		g.cpu.Write(base+uint16(i), data)
+	}
+}
+
+func (g *DogGame) writeTileMap(mapID, x, y int, data byte) {
+	if mapID < 0 || mapID >= 2 {
+		slog.Error("write tileMap: out of range", "mapID", mapID)
+	}
+	if x < 0 || x >= 32 {
+		slog.Error("write tileMap: out of range", "x", x)
+	}
+	if y < 0 || x >= 32 {
+		slog.Error("write tileMap: out of range", "y", y)
+	}
+	base := [2]uint16{0x9800, 0x9C00}[mapID]
+	addr := base + uint16(x|y<<5)
+	g.cpu.Write(addr, data)
 }
 
 func (g *DogGame) Code(cpu *gamebro.CPU) {
 	if g.init {
 		g.init = false
 		g.cpu = cpu
-		for tileID := range 4 {
+		for tileID := range len(g.bg) / 16 {
 			tile := g.fetchRomTile(tileID)
-			base := uint16(tileID << 4)
-			for i, b := range tile {
-				g.writeTile(base+uint16(i), b)
+			g.writeTile(tileID, tile)
+		}
+		for y := range 18 {
+			for x := range 20 {
+				tileID := g.tmap[x+y*20]
+				g.writeTileMap(0, x, y, tileID)
 			}
 		}
 	}
