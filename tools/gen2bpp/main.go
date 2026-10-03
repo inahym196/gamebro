@@ -1,4 +1,4 @@
-package main
+package gen2bpp
 
 import (
 	"bufio"
@@ -61,12 +61,7 @@ func isDir(path string) bool {
 	return info.IsDir()
 }
 
-func run(args []string) error {
-	if len(args) < 3 {
-		return fmt.Errorf("エラー: 2つの引数: src,dstが必要です\n")
-	}
-	src := args[1]
-	dst := args[2]
+func Run(src, dst string) error {
 
 	if !isDir(dst) {
 		return fmt.Errorf("エラー: dst '%s'は有効なディレクトリではありません", dst)
@@ -93,11 +88,4 @@ func run(args []string) error {
 		}
 	}
 	return nil
-}
-
-func main() {
-	if err := run(os.Args); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
 }

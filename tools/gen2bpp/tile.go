@@ -1,4 +1,4 @@
-package main
+package gen2bpp
 
 import (
 	"fmt"

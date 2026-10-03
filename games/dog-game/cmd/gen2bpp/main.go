@@ -1,15 +1,24 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
+
+	"github.com/inahym196/gamebro/tools/gen2bpp"
 )
 
 func main() {
-	romPath := "./games/dog-game/assets/tilemap.rom"
 
+	srcDir, dstDir := "./assets/src", "./assets/"
+	if err := gen2bpp.Run(srcDir, dstDir); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	// generate tilemap.rom
+	romPath := "./assets/tilemap.rom"
 	width, height := 20, 18
-
 	data := make([]byte, width*height)
 	for y := range height {
 		base := y * width

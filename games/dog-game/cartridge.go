@@ -12,6 +12,8 @@ const (
 	ScreenTileHeight = gamebro.ScreenHeight / gamebro.TileSize
 )
 
+//go:generate go run ./cmd/gen2bpp/main.go
+
 //go:embed assets/sprite.rom
 var spriteData []byte
 
