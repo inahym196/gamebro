@@ -92,10 +92,8 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 	if g.init {
 		g.init = false
 		g.cpu = cpu
-		for tileID := range len(g.bg) / BytesPerTile {
-			// read rom and write ramをまとめたい
-			tile := g.readTile(tileID)
-			g.writeTile(tileID, tile)
+		for tileID := range len(g.bg) / gamebro.BytesPerTile {
+			g.cpu.LoadTile(tileID, tileID)
 		}
 		for y := range ScreenTileHeight {
 			base := y * ScreenTileWidth

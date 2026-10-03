@@ -1,6 +1,12 @@
 package gamebro
 
-import "log/slog"
+import (
+	"log/slog"
+)
+
+const (
+	BytesPerTile = TileSize * 2
+)
 
 type cartridge interface {
 	Code(cpu *CPU)
@@ -67,3 +73,25 @@ func (cpu *CPU) Write(addr uint16, data byte) { cpu.mmu.Write(addr, data) }
 func (cpu *CPU) Read(addr uint16) byte        { return cpu.mmu.Read(addr) }
 
 func (cpu *CPU) Step() { cpu.mmu.crt.Code(cpu) }
+
+func (cpu *CPU) readRomTile(id int) (tile [BytesPerTile]byte) {
+	base := id * BytesPerTile
+	for i := range BytesPerTile {
+		addr := uint16(base + i)
+		tile[i] = cpu.Read(addr)
+	}
+	return tile
+}
+
+func (cpu *CPU) writeTile(id int, tile [BytesPerTile]byte) {
+	base := 0x8000 + uint16(id<<4)
+	for i, data := range tile {
+		addr := base + uint16(i)
+		cpu.Write(addr, data)
+	}
+}
+
+func (cpu *CPU) LoadTile(srcId int, dstId int) {
+	tile := cpu.readRomTile(srcId)
+	cpu.writeTile(dstId, tile)
+}
