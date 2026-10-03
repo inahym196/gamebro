@@ -2,6 +2,11 @@ package gamebro
 
 import "log/slog"
 
+type cartridge interface {
+	Code(cpu *CPU)
+	Read(addr uint16) byte
+}
+
 type MMU struct {
 	crt     cartridge
 	tiles   [16 * 8 * 3 * 8 * 2]byte
@@ -17,6 +22,8 @@ func NewMMU(crt cartridge) *MMU {
 
 func (mmu *MMU) Write(addr uint16, data byte) {
 	switch {
+	case addr < 0x8000:
+		slog.Warn("rom cannot write", "addr", addr, "data", data)
 	case addr >= 0x8000 && addr < 0x9800:
 		mmu.tiles[addr-0x8000] = data
 	case addr >= 0x9800 && addr < 0xA000:
@@ -32,6 +39,8 @@ func (mmu *MMU) Write(addr uint16, data byte) {
 
 func (mmu *MMU) Read(addr uint16) byte {
 	switch {
+	case addr < 0x8000:
+		return mmu.crt.Read(addr)
 	case addr >= 0x8000 && addr < 0x9800:
 		return mmu.tiles[addr-0x8000]
 	case addr >= 0x9800 && addr < 0xA000:

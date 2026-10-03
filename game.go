@@ -9,10 +9,6 @@ const (
 	ScreenHeight = 16
 )
 
-type cartridge interface {
-	Code(cpu *CPU)
-}
-
 func NewGame(crt cartridge) *Game {
 	mmu := NewMMU(crt)
 	return &Game{

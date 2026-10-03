@@ -33,10 +33,25 @@ func NewDogGame() *DogGame {
 	}
 }
 
+func (g *DogGame) Read(addr uint16) byte {
+	switch {
+	case addr < 0x1000:
+		return g.bg[addr]
+	case addr >= 0x1000 && addr < 0x2000:
+		return g.sprite[addr-0x1000]
+	case addr >= 0x2000 && addr < 0x3000:
+		return g.tmap[addr-0x3000]
+	default:
+		slog.Warn("not impl yet", "addr", addr)
+		return 0xFF
+	}
+}
+
 func (g *DogGame) fetchRomTile(id int) (tile [16]byte) {
 	base := id * 16
 	for i := range 16 {
-		tile[i] = g.bg[base+i]
+		addr := uint16(base + i)
+		tile[i] = g.cpu.Read(addr)
 	}
 	return tile
 }
@@ -47,7 +62,8 @@ func (g *DogGame) writeTile(id int, tile [16]byte) {
 	}
 	base := 0x8000 + uint16(id<<4)
 	for i, data := range tile {
-		g.cpu.Write(base+uint16(i), data)
+		addr := base + uint16(i)
+		g.cpu.Write(addr, data)
 	}
 }
 
