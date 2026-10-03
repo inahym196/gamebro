@@ -2,7 +2,7 @@ package gamebro
 
 import "log/slog"
 
-type mmu struct {
+type MMU struct {
 	crt     cartridge
 	tiles   [16 * 8 * 3 * 8 * 2]byte
 	tileMap [2 * 32 * 32]byte
@@ -11,43 +11,51 @@ type mmu struct {
 	ioRegs  [0x80]byte
 }
 
-type CPU struct {
-	*mmu
+func NewMMU(crt cartridge) *MMU {
+	return &MMU{crt: crt}
 }
 
-func NewCPU(crt cartridge) *CPU {
-	return &CPU{&mmu{crt: crt}}
-}
-
-func (cpu *CPU) Write(addr uint16, data byte) {
+func (mmu *MMU) Write(addr uint16, data byte) {
 	switch {
 	case addr >= 0x8000 && addr < 0x9800:
-		cpu.tiles[addr-0x8000] = data
+		mmu.tiles[addr-0x8000] = data
 	case addr >= 0x9800 && addr < 0xA000:
-		cpu.tileMap[addr-0x9800] = data
+		mmu.tileMap[addr-0x9800] = data
 	case addr >= 0xC000 && addr < 0xE000:
-		cpu.wram[addr-0xC000] = data
+		mmu.wram[addr-0xC000] = data
 	case addr >= 0xFF00 && addr < 0xFF80:
-		cpu.ioRegs[addr-0xFF00] = data
+		mmu.ioRegs[addr-0xFF00] = data
 	default:
 		slog.Error("not impl yet")
 	}
 }
 
-func (cpu *CPU) Read(addr uint16) byte {
+func (mmu *MMU) Read(addr uint16) byte {
 	switch {
 	case addr >= 0x8000 && addr < 0x9800:
-		return cpu.tiles[addr-0x8000]
+		return mmu.tiles[addr-0x8000]
 	case addr >= 0x9800 && addr < 0xA000:
-		return cpu.tileMap[addr-0x9800]
+		return mmu.tileMap[addr-0x9800]
 	case addr >= 0xC000 && addr < 0xE000:
-		return cpu.wram[addr-0xC000]
+		return mmu.wram[addr-0xC000]
 	case addr >= 0xFF00 && addr < 0xFF80:
-		return cpu.ioRegs[addr-0xFF00]
+		return mmu.ioRegs[addr-0xFF00]
 	default:
 		slog.Error("not impl yet")
 		return 0xFF
 	}
 }
 
-func (cpu *CPU) Step() { cpu.crt.Code(cpu) }
+type CPU struct {
+	mmu *MMU
+}
+
+func NewCPU(mmu *MMU) *CPU {
+
+	return &CPU{mmu}
+}
+
+func (cpu *CPU) Write(addr uint16, data byte) { cpu.mmu.Write(addr, data) }
+func (cpu *CPU) Read(addr uint16) byte        { return cpu.mmu.Read(addr) }
+
+func (cpu *CPU) Step() { cpu.mmu.crt.Code(cpu) }
