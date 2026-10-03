@@ -51,6 +51,19 @@ func (g *DogGame) Read(addr uint16) byte {
 		return 0xFF
 	}
 }
+func readRomTile(cpu *gamebro.CPU, id int) (tile [gamebro.BytesPerTile]byte) {
+	base := id * gamebro.BytesPerTile
+	for i := range gamebro.BytesPerTile {
+		addr := uint16(base + i)
+		tile[i] = cpu.Read(addr)
+	}
+	return tile
+}
+
+func loadTile(cpu *gamebro.CPU, srcId int, dstId int) {
+	tile := readRomTile(cpu, srcId)
+	cpu.WriteTile(dstId, tile)
+}
 
 func calcTileMapAddr(mapID, x, y int) uint16 {
 	if mapID < 0 || mapID >= 2 {
@@ -71,7 +84,7 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 		g.init = false
 		g.cpu = cpu
 		for tileID := range len(g.bg) / gamebro.BytesPerTile {
-			g.cpu.LoadTile(tileID, tileID)
+			loadTile(cpu, tileID, tileID)
 		}
 		for y := range ScreenTileHeight {
 			base := 0x2000 + y*ScreenTileWidth
