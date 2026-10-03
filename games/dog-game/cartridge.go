@@ -8,7 +8,6 @@ import (
 )
 
 const (
-	BytesPerTile     = gamebro.TileSize * 2
 	ScreenTileWidth  = gamebro.ScreenWidth / gamebro.TileSize
 	ScreenTileHeight = gamebro.ScreenHeight / gamebro.TileSize
 )
@@ -53,27 +52,7 @@ func (g *DogGame) Read(addr uint16) byte {
 	}
 }
 
-func (g *DogGame) readTile(id int) (tile [BytesPerTile]byte) {
-	base := id * BytesPerTile
-	for i := range BytesPerTile {
-		addr := uint16(base + i)
-		tile[i] = g.cpu.Read(addr)
-	}
-	return tile
-}
-
-func (g *DogGame) writeTile(id int, tile [BytesPerTile]byte) {
-	if id < 0 || id >= 384 {
-		slog.Error("write tile: out of range", "tileID", id)
-	}
-	base := 0x8000 + uint16(id<<4)
-	for i, data := range tile {
-		addr := base + uint16(i)
-		g.cpu.Write(addr, data)
-	}
-}
-
-func (g *DogGame) writeTileMap(mapID, x, y int, data byte) {
+func calcTileMapAddr(mapID, x, y int) uint16 {
 	if mapID < 0 || mapID >= 2 {
 		slog.Error("write tileMap: out of range", "mapID", mapID)
 	}
@@ -84,8 +63,7 @@ func (g *DogGame) writeTileMap(mapID, x, y int, data byte) {
 		slog.Error("write tileMap: out of range", "y", y)
 	}
 	base := [2]uint16{0x9800, 0x9C00}[mapID]
-	addr := base + uint16(x|y<<5)
-	g.cpu.Write(addr, data)
+	return base + uint16(x|y<<5)
 }
 
 func (g *DogGame) Code(cpu *gamebro.CPU) {
@@ -96,11 +74,11 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 			g.cpu.LoadTile(tileID, tileID)
 		}
 		for y := range ScreenTileHeight {
-			base := y * ScreenTileWidth
+			base := 0x2000 + y*ScreenTileWidth
 			for x := range ScreenTileWidth {
-				addr := uint16(0x2000 + base + x)
-				tileID := g.Read(addr)
-				g.writeTileMap(0, x, y, tileID)
+				tileID := g.Read(uint16(base + x))
+				tmapAddr := calcTileMapAddr(0, x, y)
+				cpu.Write(tmapAddr, tileID)
 			}
 		}
 	}
