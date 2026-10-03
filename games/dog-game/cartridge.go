@@ -7,6 +7,12 @@ import (
 	"github.com/inahym196/gamebro"
 )
 
+const (
+	BytesPerTile     = gamebro.TileSize * 2
+	ScreenTileWidth  = gamebro.ScreenWidth / gamebro.TileSize
+	ScreenTileHeight = gamebro.ScreenHeight / gamebro.TileSize
+)
+
 //go:embed assets/sprite.rom
 var spriteData []byte
 
@@ -40,23 +46,23 @@ func (g *DogGame) Read(addr uint16) byte {
 	case addr >= 0x1000 && addr < 0x2000:
 		return g.sprite[addr-0x1000]
 	case addr >= 0x2000 && addr < 0x3000:
-		return g.tmap[addr-0x3000]
+		return g.tmap[addr-0x2000]
 	default:
 		slog.Warn("not impl yet", "addr", addr)
 		return 0xFF
 	}
 }
 
-func (g *DogGame) fetchRomTile(id int) (tile [16]byte) {
-	base := id * 16
-	for i := range 16 {
+func (g *DogGame) readTile(id int) (tile [BytesPerTile]byte) {
+	base := id * BytesPerTile
+	for i := range BytesPerTile {
 		addr := uint16(base + i)
 		tile[i] = g.cpu.Read(addr)
 	}
 	return tile
 }
 
-func (g *DogGame) writeTile(id int, tile [16]byte) {
+func (g *DogGame) writeTile(id int, tile [BytesPerTile]byte) {
 	if id < 0 || id >= 384 {
 		slog.Error("write tile: out of range", "tileID", id)
 	}
@@ -86,13 +92,16 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 	if g.init {
 		g.init = false
 		g.cpu = cpu
-		for tileID := range len(g.bg) / 16 {
-			tile := g.fetchRomTile(tileID)
+		for tileID := range len(g.bg) / BytesPerTile {
+			// read rom and write ramをまとめたい
+			tile := g.readTile(tileID)
 			g.writeTile(tileID, tile)
 		}
-		for y := range 18 {
-			for x := range 20 {
-				tileID := g.tmap[x+y*20]
+		for y := range ScreenTileHeight {
+			base := y * ScreenTileWidth
+			for x := range ScreenTileWidth {
+				addr := uint16(0x2000 + base + x)
+				tileID := g.Read(addr)
 				g.writeTileMap(0, x, y, tileID)
 			}
 		}

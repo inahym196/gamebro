@@ -5,14 +5,14 @@ import (
 )
 
 const (
-	ScreenWidth  = 16
-	ScreenHeight = 16
+	ScreenWidth  = 160
+	ScreenHeight = 144
 )
 
 func NewGame(crt cartridge) *Game {
 	mmu := NewMMU(crt)
 	return &Game{
-		pbuf: NewPixelBuffer(16, 16),
+		pbuf: NewPixelBuffer(ScreenWidth, ScreenHeight),
 		cpu:  NewCPU(mmu),
 		ppu:  NewPPU(mmu),
 	}
@@ -26,9 +26,9 @@ type Game struct {
 
 func (g *Game) Update() error {
 	g.cpu.Step()
-	for ly := range 16 {
+	for ly := range ScreenHeight {
 		g.ppu.renderScanline(ly)
-		g.pbuf.SetScanlineGray(ly, g.ppu.linePixels[:])
+		g.pbuf.SetScanlineGray(ly, g.ppu.LinePixels())
 	}
 	return nil
 }

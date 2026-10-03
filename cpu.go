@@ -60,7 +60,6 @@ type CPU struct {
 }
 
 func NewCPU(mmu *MMU) *CPU {
-
 	return &CPU{mmu}
 }
 

@@ -26,7 +26,7 @@ func init() {
 func main() {
 	crt := dog.NewDogGame()
 	game := gamebro.NewGame(crt)
-	ebiten.SetWindowSize(gamebro.ScreenWidth*20, gamebro.ScreenWidth*20)
+	ebiten.SetWindowSize(gamebro.ScreenWidth*4, gamebro.ScreenHeight*4)
 	if err := ebiten.RunGame(game); err != nil {
 		log.Fatal(err)
 	}

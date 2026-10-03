@@ -12,9 +12,10 @@ func main() {
 
 	data := make([]byte, width*height)
 	for y := range height {
+		base := y * width
 		for x := range width {
 			if (x+y)%2 != 0 {
-				data[x+y*width] = 1
+				data[base+x] = 1
 			}
 		}
 	}

@@ -1,8 +1,12 @@
 package gamebro
 
+const (
+	TileSize = 8
+)
+
 type PPU struct {
 	mmu        *MMU
-	linePixels [16]uint8
+	linePixels [ScreenWidth]uint8
 }
 
 func NewPPU(mmu *MMU) *PPU {
@@ -12,8 +16,8 @@ func NewPPU(mmu *MMU) *PPU {
 func (ppu *PPU) LinePixels() []uint8 { return ppu.linePixels[:] }
 
 func (ppu *PPU) readTileRow(id byte, offsetY int) (lo, hi byte) {
-	base := 0x8000 + uint16(id<<4)
-	return ppu.mmu.Read(base + uint16(offsetY<<1)), ppu.mmu.Read(base + uint16(offsetY<<1) + 1)
+	addr := 0x8000 + uint16(id<<4) + uint16(offsetY<<1)
+	return ppu.mmu.Read(addr), ppu.mmu.Read(addr + 1)
 }
 
 func (ppu *PPU) fetchBGWindowTileRow(tileX, tileY, offsetY, mapID int) (lo, hi byte) {
@@ -32,9 +36,9 @@ func colorMap(colorID int, palette uint8) byte {
 	return cmap[paletteID]
 }
 
-func toColorIDs(lo, hi byte) [8]int {
-	var cNums [8]int
-	for x := range 8 {
+func toColorIDs(lo, hi byte) [TileSize]int {
+	var cNums [TileSize]int
+	for x := range TileSize {
 		shift := 7 - x
 		_lo := (lo >> shift) & 1
 		_hi := (hi >> shift) & 1
@@ -44,11 +48,11 @@ func toColorIDs(lo, hi byte) [8]int {
 }
 
 func (ppu *PPU) renderScanline(ly int) {
-	tileY := ly / 8
-	offsetY := ly % 8
-	for tileX := range 16 / 8 {
+	tileY := ly / TileSize
+	offsetY := ly % TileSize
+	for tileX := range ScreenWidth / TileSize {
 		lo, hi := ppu.fetchBGTileRow(tileX, tileY, offsetY)
-		baseX := tileX * 8
+		baseX := tileX * TileSize
 		for i, cid := range toColorIDs(lo, hi) {
 			bgp := uint8(0b11100100)
 			ppu.linePixels[baseX+i] = colorMap(cid, bgp)
