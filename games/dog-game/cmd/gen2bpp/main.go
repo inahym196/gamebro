@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/inahym196/gamebro/tools/gen2bpp"
@@ -10,25 +9,14 @@ import (
 
 func main() {
 
-	srcDir, dstDir := "./assets/src", "./assets/"
-	if err := gen2bpp.Run(srcDir, dstDir); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+	args := os.Args[1:]
+	if len(args) != 2 {
+		fmt.Printf("引数はsrc, dstの2つ必要です.")
 	}
 
-	// generate tilemap.rom
-	romPath := "./assets/tilemap.rom"
-	width, height := 20, 18
-	data := make([]byte, width*height)
-	for y := range height {
-		base := y * width
-		for x := range width {
-			if (x+y)%2 != 0 {
-				data[base+x] = 1
-			}
-		}
-	}
-	if err := os.WriteFile(romPath, data, 0644); err != nil {
-		log.Fatal(err)
+	srcDir, dstDir := args[0], args[1]
+	if err := gen2bpp.Generate(srcDir, dstDir); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 }

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	_ "image/png"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 )
@@ -25,18 +24,28 @@ func appendTileImage(file string, w io.Writer) error {
 	return nil
 }
 
-func runDir(dir string, dst string) error {
-	dirName := filepath.Base(dir)
-	files, err := filepath.Glob(filepath.Join(dir, "*.png"))
+func isDir(path string) bool {
+	info, err := os.Stat(path)
 	if err != nil {
-		log.Fatal(err)
+		return false
+	}
+	return info.IsDir()
+}
+
+func Generate(srcDir, dst string) error {
+	if !isDir(srcDir) {
+		return fmt.Errorf("%sはディレクトリではありません\n", srcDir)
+	}
+
+	files, err := filepath.Glob(filepath.Join(srcDir, "*.png"))
+	if err != nil {
+		return err
 	}
 	if len(files) == 0 {
 		return nil
 	}
 
-	romPath := filepath.Join(dst, dirName+".rom")
-	f, err := os.Create(romPath)
+	f, err := os.Create(dst)
 	if err != nil {
 		return fmt.Errorf("failed to create rom file: %w", err)
 	}
@@ -47,44 +56,7 @@ func runDir(dir string, dst string) error {
 
 	for _, file := range files {
 		if err := appendTileImage(file, w); err != nil {
-			log.Fatal(err)
-		}
-	}
-	return nil
-}
-
-func isDir(path string) bool {
-	info, err := os.Stat(path)
-	if err != nil {
-		return false
-	}
-	return info.IsDir()
-}
-
-func Run(src, dst string) error {
-
-	if !isDir(dst) {
-		return fmt.Errorf("エラー: dst '%s'は有効なディレクトリではありません", dst)
-	}
-
-	matches, err := filepath.Glob(filepath.Join(src, "*"))
-	if err != nil {
-		return err
-	}
-	info, err := os.Stat(dst)
-	if err != nil {
-		return err
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("dst: %sはディレクトリではありません\n", dst)
-	}
-
-	for _, path := range matches {
-		if !isDir(path) {
-			continue
-		}
-		if err := runDir(path, dst); err != nil {
-			return fmt.Errorf("error in dir %s: %v", path, err)
+			return err
 		}
 	}
 	return nil

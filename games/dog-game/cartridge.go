@@ -12,14 +12,19 @@ const (
 	ScreenTileHeight = gamebro.ScreenHeight / gamebro.TileSize
 )
 
-//go:generate go run ./cmd/gen2bpp/main.go
-
+//go:generate go run ./cmd/gen2bpp/main.go assets/src/sprite assets/sprite.rom
 //go:embed assets/sprite.rom
 var spriteData []byte
 
+//go:generate go run ./cmd/gen2bpp/main.go assets/src/bg assets/bg.rom
 //go:embed assets/bg.rom
 var bgData []byte
 
+//go:generate go run ./cmd/gen2bpp/main.go assets/src/window assets/window.rom
+//go:embed assets/window.rom
+var windowData []byte
+
+//go:generate go run ./cmd/gentilemap/main.go assets/tilemap.rom
 //go:embed assets/tilemap.rom
 var tmapData []byte
 
@@ -29,6 +34,7 @@ type DogGame struct {
 	bg     []byte
 	sprite []byte
 	tmap   []byte
+	window []byte
 }
 
 func NewDogGame() *DogGame {
@@ -37,6 +43,7 @@ func NewDogGame() *DogGame {
 		bg:     bgData,
 		sprite: spriteData,
 		tmap:   tmapData,
+		window: windowData,
 	}
 }
 
