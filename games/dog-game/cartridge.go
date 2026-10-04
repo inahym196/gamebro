@@ -55,23 +55,39 @@ func (g *DogGame) Read(addr uint16) byte {
 		return g.sprite[addr-0x1000]
 	case addr >= 0x2000 && addr < 0x3000:
 		return g.tmap[addr-0x2000]
+	case addr >= 0x3000 && addr < 0x4000:
+		return g.window[addr-0x3000]
 	default:
 		slog.Warn("not impl yet", "addr", addr)
 		return 0xFF
 	}
 }
-func readRomTile(cpu *gamebro.CPU, id int) (tile [gamebro.BytesPerTile]byte) {
-	base := id * gamebro.BytesPerTile
+
+func readRomTile(cpu *gamebro.CPU, base uint16) (tile [gamebro.BytesPerTile]byte) {
 	for i := range gamebro.BytesPerTile {
-		addr := uint16(base + i)
-		tile[i] = cpu.Read(addr)
+		tile[i] = cpu.Read(base + uint16(i))
 	}
 	return tile
 }
 
-func loadTile(cpu *gamebro.CPU, srcId int, dstId int) {
-	tile := readRomTile(cpu, srcId)
-	cpu.WriteTile(dstId, tile)
+func readRomBGTile(cpu *gamebro.CPU, id int) (tile [gamebro.BytesPerTile]byte) {
+	base := uint16(id * gamebro.BytesPerTile)
+	return readRomTile(cpu, base)
+}
+
+func loadBGTile(cpu *gamebro.CPU, srcId, dstId int) {
+	tile := readRomBGTile(cpu, srcId)
+	cpu.WriteTileByID(dstId, tile)
+}
+
+func readRomWindowTile(cpu *gamebro.CPU, id int) (tile [gamebro.BytesPerTile]byte) {
+	base := uint16(0x3000 + id*gamebro.BytesPerTile)
+	return readRomTile(cpu, base)
+}
+
+func loadWindowTile(cpu *gamebro.CPU, srcId, dstId int) {
+	tile := readRomWindowTile(cpu, srcId)
+	cpu.WriteTileByID(dstId, tile)
 }
 
 func calcTileMapAddr(mapID, x, y int) uint16 {
@@ -93,7 +109,7 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 		g.init = false
 		g.cpu = cpu
 		for tileID := range len(g.bg) / gamebro.BytesPerTile {
-			loadTile(cpu, tileID, tileID)
+			loadBGTile(cpu, tileID, tileID|0x100)
 		}
 		for y := range ScreenTileHeight {
 			base := 0x2000 + y*ScreenTileWidth
@@ -101,6 +117,17 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 				tileID := g.Read(uint16(base + x))
 				tmapAddr := calcTileMapAddr(0, x, y)
 				cpu.Write(tmapAddr, tileID)
+			}
+		}
+		for tileID := range len(g.window) / gamebro.BytesPerTile {
+			loadWindowTile(cpu, tileID, tileID|0x80)
+		}
+		tmapIndex := byte(0x80)
+		for y := range ScreenTileHeight {
+			for x := range ScreenTileWidth {
+				tmapAddr := calcTileMapAddr(1, x, y)
+				cpu.Write(tmapAddr, tmapIndex)
+				tmapIndex++
 			}
 		}
 	}

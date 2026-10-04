@@ -27,7 +27,7 @@ type Game struct {
 func (g *Game) Update() error {
 	g.cpu.Step()
 	for ly := range ScreenHeight {
-		g.ppu.renderScanline(ly)
+		g.ppu.RenderScanline(ly)
 		g.pbuf.SetScanlineGray(ly, g.ppu.LinePixels())
 	}
 	return nil

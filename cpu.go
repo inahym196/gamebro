@@ -74,7 +74,7 @@ func (cpu *CPU) Read(addr uint16) byte        { return cpu.mmu.Read(addr) }
 
 func (cpu *CPU) Step() { cpu.mmu.crt.Code(cpu) }
 
-func (cpu *CPU) WriteTile(id int, tile [BytesPerTile]byte) {
+func (cpu *CPU) WriteTileByID(id int, tile [BytesPerTile]byte) {
 	base := 0x8000 + uint16(id<<4)
 	for i, data := range tile {
 		addr := base + uint16(i)

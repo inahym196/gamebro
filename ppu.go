@@ -15,19 +15,31 @@ func NewPPU(mmu *MMU) *PPU {
 
 func (ppu *PPU) LinePixels() []uint8 { return ppu.linePixels[:] }
 
-func (ppu *PPU) readTileRow(id byte, offsetY int) (lo, hi byte) {
-	addr := 0x8000 + uint16(id<<4) + uint16(offsetY<<1)
-	return ppu.mmu.Read(addr), ppu.mmu.Read(addr + 1)
+func (ppu *PPU) readTileRow(id byte, offsetY int, method80 bool) (lo, hi byte) {
+	tileAddr := 0x8000 + uint16(id<<4)
+	if !method80 {
+		tileAddr = 0x9000 + uint16(int16(int8(id))<<4)
+	}
+	rowAddr := tileAddr + uint16(offsetY<<1)
+	return ppu.mmu.Read(rowAddr), ppu.mmu.Read(rowAddr + 1)
 }
 
-func (ppu *PPU) fetchBGWindowTileRow(tileX, tileY, offsetY, mapID int) (lo, hi byte) {
-	addr := [2]uint16{0x9800, 0x9C00}[mapID] + uint16(tileY<<5|tileX)
+func (ppu *PPU) fetchBGWindowTileRow(tileX, tileY, offsetY int, base uint16) (lo, hi byte) {
+	addr := base | uint16(tileY<<5|tileX)
 	tileID := ppu.mmu.Read(addr)
-	return ppu.readTileRow(tileID, offsetY)
+	return ppu.readTileRow(tileID, offsetY, false)
+}
+
+func (ppu *PPU) fetchWindowTileRow(tileX, tileY, offsetY int) (lo, hi byte) {
+	// TODO: LCDC.6
+	base := [2]uint16{0x9800, 0x9C00}[1]
+	return ppu.fetchBGWindowTileRow(tileX, tileY, offsetY, base)
 }
 
 func (ppu *PPU) fetchBGTileRow(tileX, tileY, offsetY int) (lo, hi byte) {
-	return ppu.fetchBGWindowTileRow(tileX, tileY, offsetY, 0)
+	// TODO: LCDC.3
+	base := [2]uint16{0x9800, 0x9C00}[0]
+	return ppu.fetchBGWindowTileRow(tileX, tileY, offsetY, base)
 }
 
 func colorMap(colorID int, palette uint8) byte {
@@ -47,15 +59,33 @@ func toColorIDs(lo, hi byte) [TileSize]int {
 	return cNums
 }
 
-func (ppu *PPU) renderScanline(ly int) {
+func (ppu *PPU) renderBGLine(ly int) {
 	tileY := ly / TileSize
 	offsetY := ly % TileSize
+
+	wy := 128
+	windowLine := false
+	if ly >= wy {
+		windowLine = true
+		winY := ly - wy
+		tileY = winY / TileSize
+		offsetY = winY % TileSize
+	}
 	for tileX := range ScreenWidth / TileSize {
-		lo, hi := ppu.fetchBGTileRow(tileX, tileY, offsetY)
+		var lo, hi byte
+		if windowLine {
+			lo, hi = ppu.fetchWindowTileRow(tileX, tileY, offsetY)
+		} else {
+			lo, hi = ppu.fetchBGTileRow(tileX, tileY, offsetY)
+		}
 		baseX := tileX * TileSize
 		for i, cid := range toColorIDs(lo, hi) {
 			bgp := uint8(0b11100100)
 			ppu.linePixels[baseX+i] = colorMap(cid, bgp)
 		}
 	}
+}
+
+func (ppu *PPU) RenderScanline(ly int) {
+	ppu.renderBGLine(ly)
 }
