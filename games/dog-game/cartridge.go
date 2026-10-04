@@ -8,6 +8,7 @@ import (
 )
 
 const (
+	BytesPerTile     = gamebro.TileSize * 2
 	ScreenTileWidth  = gamebro.ScreenWidth / gamebro.TileSize
 	ScreenTileHeight = gamebro.ScreenHeight / gamebro.TileSize
 )
@@ -63,31 +64,42 @@ func (g *DogGame) Read(addr uint16) byte {
 	}
 }
 
-func readRomTile(cpu *gamebro.CPU, base uint16) (tile [gamebro.BytesPerTile]byte) {
-	for i := range gamebro.BytesPerTile {
+func readRomTile(cpu *gamebro.CPU, base uint16) (tile [BytesPerTile]byte) {
+	for i := range BytesPerTile {
 		tile[i] = cpu.Read(base + uint16(i))
 	}
 	return tile
 }
 
-func readRomBGTile(cpu *gamebro.CPU, id int) (tile [gamebro.BytesPerTile]byte) {
-	base := uint16(id * gamebro.BytesPerTile)
+func readRomBGTile(cpu *gamebro.CPU, id int) (tile [BytesPerTile]byte) {
+	base := uint16(id * BytesPerTile)
 	return readRomTile(cpu, base)
+}
+
+func writeTile(cpu *gamebro.CPU, addr uint16, tile [BytesPerTile]byte) {
+	for i, data := range tile {
+		cpu.Write(addr+uint16(i), data)
+	}
+}
+
+func writeTileByID(cpu *gamebro.CPU, id int, tile [BytesPerTile]byte) {
+	addr := 0x8000 + uint16(id<<4)
+	writeTile(cpu, addr, tile)
 }
 
 func loadBGTile(cpu *gamebro.CPU, srcId, dstId int) {
 	tile := readRomBGTile(cpu, srcId)
-	cpu.WriteTileByID(dstId, tile)
+	writeTileByID(cpu, dstId, tile)
 }
 
-func readRomWindowTile(cpu *gamebro.CPU, id int) (tile [gamebro.BytesPerTile]byte) {
-	base := uint16(0x3000 + id*gamebro.BytesPerTile)
+func readRomWindowTile(cpu *gamebro.CPU, id int) (tile [BytesPerTile]byte) {
+	base := uint16(0x3000 + id*BytesPerTile)
 	return readRomTile(cpu, base)
 }
 
 func loadWindowTile(cpu *gamebro.CPU, srcId, dstId int) {
 	tile := readRomWindowTile(cpu, srcId)
-	cpu.WriteTileByID(dstId, tile)
+	writeTileByID(cpu, dstId, tile)
 }
 
 func calcTileMapAddr(mapID, x, y int) uint16 {
@@ -108,7 +120,7 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 	if g.init {
 		g.init = false
 		g.cpu = cpu
-		for tileID := range len(g.bg) / gamebro.BytesPerTile {
+		for tileID := range len(g.bg) / BytesPerTile {
 			loadBGTile(cpu, tileID, tileID|0x100)
 		}
 		for y := range ScreenTileHeight {
@@ -119,7 +131,7 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 				cpu.Write(tmapAddr, tileID)
 			}
 		}
-		for tileID := range len(g.window) / gamebro.BytesPerTile {
+		for tileID := range len(g.window) / BytesPerTile {
 			loadWindowTile(cpu, tileID, tileID|0x80)
 		}
 		tmapIndex := byte(0x80)
