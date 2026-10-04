@@ -16,9 +16,9 @@ func NewPPU(mmu *MMU) *PPU {
 func (ppu *PPU) LinePixels() []uint8 { return ppu.linePixels[:] }
 
 func (ppu *PPU) readTileRow(id byte, offsetY int, method80 bool) (lo, hi byte) {
-	tileAddr := 0x8000 + uint16(id<<4)
+	tileAddr := 0x8000 + uint16(id)<<4
 	if !method80 {
-		tileAddr = 0x9000 + uint16(int16(int8(id))<<4)
+		tileAddr = uint16(0x9000 + int(int8(id))<<4)
 	}
 	rowAddr := tileAddr + uint16(offsetY<<1)
 	return ppu.mmu.Read(rowAddr), ppu.mmu.Read(rowAddr + 1)

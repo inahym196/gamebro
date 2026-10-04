@@ -16,6 +16,18 @@ func NewPixelBuffer(w, h int) *PixelBuffer {
 	}
 }
 
+func (buf *PixelBuffer) SetPixelGray(x, y int, c byte) error {
+	if x < 0 || x >= buf.width || y < 0 || y >= buf.height {
+		return fmt.Errorf("out of range: %d,%d", x, y)
+	}
+	idx := (y*buf.width + x) * 4
+	buf.pixels[idx] = c
+	buf.pixels[idx+1] = c
+	buf.pixels[idx+2] = c
+	buf.pixels[idx+3] = 0xFF
+	return nil
+}
+
 func (buf *PixelBuffer) SetScanlineGray(y int, lineBytes []uint8) error {
 	if y < 0 || y >= buf.height {
 		return fmt.Errorf("out of range: %d", y)
