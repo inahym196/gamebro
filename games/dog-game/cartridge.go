@@ -36,6 +36,7 @@ type DogGame struct {
 	sprite []byte
 	tmap   []byte
 	window []byte
+	count  int
 }
 
 func NewDogGame() *DogGame {
@@ -120,9 +121,6 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 	if g.init {
 		g.init = false
 		g.cpu = cpu
-		for tileID := range len(g.bg) / BytesPerTile {
-			loadBGTile(cpu, tileID, tileID|0x100)
-		}
 		for y := range ScreenTileHeight {
 			base := 0x2000 + y*ScreenTileWidth
 			for x := range ScreenTileWidth {
@@ -143,4 +141,10 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 			}
 		}
 	}
+	frameOffset := (g.count / 20) & 3
+	tileID := [4][2]int{{0, 0}, {1, 2}, {0, 0}, {2, 1}}[frameOffset]
+	for i, src := range tileID {
+		loadBGTile(cpu, src, i|0x100)
+	}
+	g.count++
 }

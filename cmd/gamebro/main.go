@@ -39,7 +39,7 @@ func main() {
 	} else {
 		game = g
 	}
-	ebiten.SetWindowSize(gamebro.ScreenWidth*4, gamebro.ScreenHeight*4)
+	ebiten.SetWindowSize(gamebro.ScreenWidth*6, gamebro.ScreenHeight*6)
 	if err := ebiten.RunGame(game); err != nil {
 		log.Fatal(err)
 	}

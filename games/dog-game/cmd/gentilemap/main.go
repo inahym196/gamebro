@@ -6,6 +6,18 @@ import (
 	"os"
 )
 
+func random(x, y int) bool {
+	n := uint32(x + y*20)
+
+	n = (n ^ 61) ^ (n >> 16)
+	n *= 9
+	n = n ^ (n >> 4)
+	n *= 0x27d4eb1d
+	n = n ^ (n >> 15)
+
+	return (n & 63) == 0
+}
+
 func main() {
 	args := os.Args[1:]
 	if len(args) != 1 {
@@ -20,7 +32,9 @@ func main() {
 		base := y * width
 		for x := range width {
 			if (x+y)%2 != 0 {
-				data[base+x] = 1
+				data[base+x] = 0x7F
+			} else if random(x, y) {
+				data[base+x] = 0x01
 			}
 		}
 	}
