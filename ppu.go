@@ -42,8 +42,6 @@ func (ppu *PPU) fetchBGTileRow(tileX, tileY, offsetY int) (lo, hi byte) {
 	return ppu.fetchBGWindowTileRow(tileX, tileY, offsetY, base)
 }
 
-// TODO: これより上、ppuレシーバではなくpkg関数にするべき
-
 func colorMap(colorID int, palette uint8) byte {
 	cmap := [4]uint8{0xFF, 0xAA, 0x55, 0x00}
 	paletteID := int((palette >> (colorID << 1)) & 0b11)

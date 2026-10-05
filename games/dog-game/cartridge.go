@@ -129,18 +129,10 @@ func WriteOAM(cpu *gamebro.CPU, id int, field OAMField, data byte) {
 	cpu.Write(addr, data)
 }
 
-func calcTileMapAddr(mapID, x, y int) uint16 {
-	if mapID < 0 || mapID >= 2 {
-		slog.Error("write tileMap: out of range", "mapID", mapID)
-	}
-	if x < 0 || x >= 32 {
-		slog.Error("write tileMap: out of range", "x", x)
-	}
-	if y < 0 || x >= 32 {
-		slog.Error("write tileMap: out of range", "y", y)
-	}
+func (g *DogGame) setTileMap(mapID, x, y int, tileID byte) {
 	base := [2]uint16{0x9800, 0x9C00}[mapID]
-	return base + uint16(x|y<<5)
+	tmapAddr := base + uint16(x|y<<5)
+	g.cpu.Write(tmapAddr, tileID)
 }
 
 // TODO: ReadWriter依存にできないか？
@@ -154,8 +146,7 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 			base := 0x2000 + y*ScreenTileWidth
 			for x := range ScreenTileWidth {
 				tileID := g.Read(uint16(base + x))
-				tmapAddr := calcTileMapAddr(0, x, y)
-				cpu.Write(tmapAddr, tileID)
+				g.setTileMap(0, x, y, tileID)
 			}
 		}
 		// Set window tile
@@ -163,14 +154,10 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 			loadWindowTile(cpu, tileID, tileID|0x80)
 		}
 
-		// Set window tilemap
-		tmapIndex := byte(0x80)
-		// TODO: baseAddr方式に変更
 		for y := range ScreenTileHeight {
+			base := 0x80 + byte(y*ScreenTileWidth)
 			for x := range ScreenTileWidth {
-				tmapAddr := calcTileMapAddr(1, x, y)
-				cpu.Write(tmapAddr, tmapIndex)
-				tmapIndex++
+				g.setTileMap(1, x, y, base+byte(x))
 			}
 		}
 		// Set sprite tile
