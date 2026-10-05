@@ -42,6 +42,8 @@ func (ppu *PPU) fetchBGTileRow(tileX, tileY, offsetY int) (lo, hi byte) {
 	return ppu.fetchBGWindowTileRow(tileX, tileY, offsetY, base)
 }
 
+// TODO: これより上、ppuレシーバではなくpkg関数にするべき
+
 func colorMap(colorID int, palette uint8) byte {
 	cmap := [4]uint8{0xFF, 0xAA, 0x55, 0x00}
 	paletteID := int((palette >> (colorID << 1)) & 0b11)
@@ -86,6 +88,88 @@ func (ppu *PPU) renderBGLine(ly int) {
 	}
 }
 
+type IORegsField uint16
+
+const (
+	IORegsOBP0 IORegsField = 0xFF48
+	IORegsOBP1 IORegsField = 0xFF49
+)
+
+func ReadIORegs(mmu *MMU, field IORegsField) byte {
+	return mmu.Read(uint16(field))
+}
+
+type object struct {
+	PosX, PosY byte
+	TileId     byte
+	Attr       byte
+}
+
+func ReadObject(mmu *MMU, id int) object {
+	addr := uint16(0xFE00 + id<<2)
+	return object{
+		PosY:   mmu.Read(addr),
+		PosX:   mmu.Read(addr + 1),
+		TileId: mmu.Read(addr + 2),
+		Attr:   mmu.Read(addr + 3),
+	}
+}
+
+func (ppu *PPU) renderSpriteLine(ly int) error {
+	nSprites := 0
+	// TODO: LCDC.2 OBJ Size
+	is8x16 := true
+	height := 8
+	if is8x16 {
+		height = 16
+	}
+
+	for i := range 40 {
+		object := ReadObject(ppu.mmu, i)
+		palette := byte(0b11100100) //ReadIORegs(ppu.mmu, IORegsOBP0)
+		if object.Attr&0x10 > 0 {
+			palette = 0b11010000 //ReadIORegs(ppu.mmu, IORegsOBP1)
+		}
+
+		spriteY := int(object.PosY) - 16
+		if ly < spriteY || ly >= spriteY+height {
+			continue
+		}
+		nSprites++
+		if nSprites > 10 {
+			break
+		}
+
+		offsetY := ly - spriteY
+
+		// TODO: LCDC.2 OBJ Size
+		tileId := object.TileId
+		if is8x16 {
+			if offsetY < 8 {
+				tileId = tileId & 0xFE
+			} else {
+				tileId = tileId | 0x01
+				offsetY -= 8
+			}
+		}
+		lo, hi := ppu.readTileRow(tileId, offsetY&0x7, true)
+		cids := toColorIDs(lo, hi)
+		baseX := int(object.PosX) - 8
+		for i, cid := range cids {
+			screenX := baseX + i
+			if screenX < 0 || screenX > ScreenWidth {
+				continue
+			}
+			if cid == 0 {
+				continue
+			}
+			ppu.linePixels[screenX] = colorMap(cid, palette)
+		}
+	}
+	return nil
+}
+
 func (ppu *PPU) RenderScanline(ly int) {
 	ppu.renderBGLine(ly)
+	ppu.renderSpriteLine(ly)
 }

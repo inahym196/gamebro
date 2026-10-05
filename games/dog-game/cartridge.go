@@ -59,6 +59,8 @@ func (g *DogGame) Read(addr uint16) byte {
 		return g.tmap[addr-0x2000]
 	case addr >= 0x3000 && addr < 0x4000:
 		return g.window[addr-0x3000]
+	case addr >= 0x4000 && addr < 0x5000:
+		return g.sprite[addr-0x4000]
 	default:
 		slog.Warn("not impl yet", "addr", addr)
 		return 0xFF
@@ -103,6 +105,30 @@ func loadWindowTile(cpu *gamebro.CPU, srcId, dstId int) {
 	writeTileByID(cpu, dstId, tile)
 }
 
+func readRomSpriteTile(cpu *gamebro.CPU, id int) (tile [BytesPerTile]byte) {
+	base := uint16(0x4000 + id*BytesPerTile)
+	return readRomTile(cpu, base)
+}
+
+func loadSpriteTile(cpu *gamebro.CPU, srcId, dstId int) {
+	tile := readRomSpriteTile(cpu, srcId)
+	writeTileByID(cpu, dstId, tile)
+}
+
+type OAMField int
+
+const (
+	OAMFieldPosY OAMField = iota
+	OAMFieldPosX
+	OAMFieldTileId
+	OAMFieldAttr
+)
+
+func WriteOAM(cpu *gamebro.CPU, id int, field OAMField, data byte) {
+	addr := uint16(0xFE00 + id<<2 + int(field))
+	cpu.Write(addr, data)
+}
+
 func calcTileMapAddr(mapID, x, y int) uint16 {
 	if mapID < 0 || mapID >= 2 {
 		slog.Error("write tileMap: out of range", "mapID", mapID)
@@ -117,6 +143,7 @@ func calcTileMapAddr(mapID, x, y int) uint16 {
 	return base + uint16(x|y<<5)
 }
 
+// TODO: ReadWriter依存にできないか？
 func (g *DogGame) Code(cpu *gamebro.CPU) {
 	if g.init {
 		g.init = false
@@ -138,12 +165,17 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 
 		// Set window tilemap
 		tmapIndex := byte(0x80)
+		// TODO: baseAddr方式に変更
 		for y := range ScreenTileHeight {
 			for x := range ScreenTileWidth {
 				tmapAddr := calcTileMapAddr(1, x, y)
 				cpu.Write(tmapAddr, tmapIndex)
 				tmapIndex++
 			}
+		}
+		// Set sprite tile
+		for i := range 4 {
+			loadSpriteTile(cpu, i, i)
 		}
 	}
 
@@ -154,4 +186,14 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 		loadBGTile(cpu, src, i|0x100)
 	}
 	g.count++
+
+	// Set OAM
+	WriteOAM(cpu, 0, OAMFieldPosY, 16*5)
+	WriteOAM(cpu, 0, OAMFieldPosX, 8*11)
+	WriteOAM(cpu, 0, OAMFieldTileId, 0)
+	WriteOAM(cpu, 0, OAMFieldAttr, 0x10)
+	WriteOAM(cpu, 1, OAMFieldPosY, 16*5)
+	WriteOAM(cpu, 1, OAMFieldPosX, 8*12)
+	WriteOAM(cpu, 1, OAMFieldTileId, 2)
+	WriteOAM(cpu, 1, OAMFieldAttr, 0x10)
 }

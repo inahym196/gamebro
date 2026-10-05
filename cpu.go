@@ -32,6 +32,8 @@ func (mmu *MMU) Write(addr uint16, data byte) {
 		mmu.tileMap[addr-0x9800] = data
 	case addr >= 0xC000 && addr < 0xE000:
 		mmu.wram[addr-0xC000] = data
+	case addr >= 0xFE00 && addr < 0xFEA0:
+		mmu.oam[addr-0xFE00] = data
 	case addr >= 0xFF00 && addr < 0xFF80:
 		mmu.ioRegs[addr-0xFF00] = data
 	default:
@@ -49,6 +51,8 @@ func (mmu *MMU) Read(addr uint16) byte {
 		return mmu.tileMap[addr-0x9800]
 	case addr >= 0xC000 && addr < 0xE000:
 		return mmu.wram[addr-0xC000]
+	case addr >= 0xFE00 && addr < 0xFEA0:
+		return mmu.oam[addr-0xFE00]
 	case addr >= 0xFF00 && addr < 0xFF80:
 		return mmu.ioRegs[addr-0xFF00]
 	default:
