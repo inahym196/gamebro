@@ -121,6 +121,8 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 	if g.init {
 		g.init = false
 		g.cpu = cpu
+
+		// Set bg tilemap
 		for y := range ScreenTileHeight {
 			base := 0x2000 + y*ScreenTileWidth
 			for x := range ScreenTileWidth {
@@ -129,9 +131,12 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 				cpu.Write(tmapAddr, tileID)
 			}
 		}
+		// Set window tile
 		for tileID := range len(g.window) / BytesPerTile {
 			loadWindowTile(cpu, tileID, tileID|0x80)
 		}
+
+		// Set window tilemap
 		tmapIndex := byte(0x80)
 		for y := range ScreenTileHeight {
 			for x := range ScreenTileWidth {
@@ -141,6 +146,8 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 			}
 		}
 	}
+
+	// Set BG tile
 	frameOffset := (g.count / 20) & 3
 	tileID := [4][2]int{{0, 0}, {1, 2}, {0, 0}, {2, 1}}[frameOffset]
 	for i, src := range tileID {
