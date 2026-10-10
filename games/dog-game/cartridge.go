@@ -59,13 +59,18 @@ func (g *DogGame) Read(addr uint16) byte {
 		return g.tmap[addr-0x2000]
 	case addr >= 0x3000 && addr < 0x4000:
 		return g.window[addr-0x3000]
-	case addr >= 0x4000 && addr < 0x5000:
-		return g.sprite[addr-0x4000]
 	default:
 		slog.Warn("not impl yet", "addr", addr)
 		return 0xFF
 	}
 }
+
+const (
+	BGBaseAddr      uint16 = 0x0000
+	SpriteBaseAddr  uint16 = 0x1000
+	TileMapBaseAddr uint16 = 0x2000
+	WinBaseAddr     uint16 = 0x3000
+)
 
 func (g *DogGame) readRomTile(base uint16) (tile [BytesPerTile]byte) {
 	for i := range BytesPerTile {
@@ -75,7 +80,7 @@ func (g *DogGame) readRomTile(base uint16) (tile [BytesPerTile]byte) {
 }
 
 func (g *DogGame) readRomBGTile(id int) (tile [BytesPerTile]byte) {
-	base := uint16(id * BytesPerTile)
+	base := BGBaseAddr + uint16(id*BytesPerTile)
 	return g.readRomTile(base)
 }
 
@@ -96,7 +101,7 @@ func (g *DogGame) loadBGTile(srcId, dstId int) {
 }
 
 func (g *DogGame) readRomWindowTile(id int) (tile [BytesPerTile]byte) {
-	base := uint16(0x3000 + id*BytesPerTile)
+	base := WinBaseAddr + uint16(id*BytesPerTile)
 	return g.readRomTile(base)
 }
 
@@ -106,7 +111,7 @@ func (g *DogGame) loadWindowTile(srcId, dstId int) {
 }
 
 func (g *DogGame) readRomSpriteTile(id int) (tile [BytesPerTile]byte) {
-	base := uint16(0x4000 + id*BytesPerTile)
+	base := SpriteBaseAddr + uint16(id*BytesPerTile)
 	return g.readRomTile(base)
 }
 
@@ -143,9 +148,9 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 
 		// Set bg tilemap
 		for y := range ScreenTileHeight {
-			base := 0x2000 + y*ScreenTileWidth
+			base := TileMapBaseAddr + uint16(y*ScreenTileWidth)
 			for x := range ScreenTileWidth {
-				tileID := g.Read(uint16(base + x))
+				tileID := g.Read(base + uint16(x))
 				g.setTileMap(0, x, y, tileID)
 			}
 		}
