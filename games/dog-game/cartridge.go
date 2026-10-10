@@ -67,52 +67,52 @@ func (g *DogGame) Read(addr uint16) byte {
 	}
 }
 
-func readRomTile(cpu *gamebro.CPU, base uint16) (tile [BytesPerTile]byte) {
+func (g *DogGame) readRomTile(base uint16) (tile [BytesPerTile]byte) {
 	for i := range BytesPerTile {
-		tile[i] = cpu.Read(base + uint16(i))
+		tile[i] = g.cpu.Read(base + uint16(i))
 	}
 	return tile
 }
 
-func readRomBGTile(cpu *gamebro.CPU, id int) (tile [BytesPerTile]byte) {
+func (g *DogGame) readRomBGTile(id int) (tile [BytesPerTile]byte) {
 	base := uint16(id * BytesPerTile)
-	return readRomTile(cpu, base)
+	return g.readRomTile(base)
 }
 
-func writeTile(cpu *gamebro.CPU, addr uint16, tile [BytesPerTile]byte) {
+func (g *DogGame) writeTile(addr uint16, tile [BytesPerTile]byte) {
 	for i, data := range tile {
-		cpu.Write(addr+uint16(i), data)
+		g.cpu.Write(addr+uint16(i), data)
 	}
 }
 
-func writeTileByID(cpu *gamebro.CPU, id int, tile [BytesPerTile]byte) {
+func (g *DogGame) writeTileByID(id int, tile [BytesPerTile]byte) {
 	addr := 0x8000 + uint16(id<<4)
-	writeTile(cpu, addr, tile)
+	g.writeTile(addr, tile)
 }
 
-func loadBGTile(cpu *gamebro.CPU, srcId, dstId int) {
-	tile := readRomBGTile(cpu, srcId)
-	writeTileByID(cpu, dstId, tile)
+func (g *DogGame) loadBGTile(srcId, dstId int) {
+	tile := g.readRomBGTile(srcId)
+	g.writeTileByID(dstId, tile)
 }
 
-func readRomWindowTile(cpu *gamebro.CPU, id int) (tile [BytesPerTile]byte) {
+func (g *DogGame) readRomWindowTile(id int) (tile [BytesPerTile]byte) {
 	base := uint16(0x3000 + id*BytesPerTile)
-	return readRomTile(cpu, base)
+	return g.readRomTile(base)
 }
 
-func loadWindowTile(cpu *gamebro.CPU, srcId, dstId int) {
-	tile := readRomWindowTile(cpu, srcId)
-	writeTileByID(cpu, dstId, tile)
+func (g *DogGame) loadWindowTile(srcId, dstId int) {
+	tile := g.readRomWindowTile(srcId)
+	g.writeTileByID(dstId, tile)
 }
 
-func readRomSpriteTile(cpu *gamebro.CPU, id int) (tile [BytesPerTile]byte) {
+func (g *DogGame) readRomSpriteTile(id int) (tile [BytesPerTile]byte) {
 	base := uint16(0x4000 + id*BytesPerTile)
-	return readRomTile(cpu, base)
+	return g.readRomTile(base)
 }
 
-func loadSpriteTile(cpu *gamebro.CPU, srcId, dstId int) {
-	tile := readRomSpriteTile(cpu, srcId)
-	writeTileByID(cpu, dstId, tile)
+func (g *DogGame) loadSpriteTile(srcId, dstId int) {
+	tile := g.readRomSpriteTile(srcId)
+	g.writeTileByID(dstId, tile)
 }
 
 type OAMField int
@@ -151,7 +151,7 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 		}
 		// Set window tile
 		for tileID := range len(g.window) / BytesPerTile {
-			loadWindowTile(cpu, tileID, tileID|0x80)
+			g.loadWindowTile(tileID, tileID|0x80)
 		}
 
 		for y := range ScreenTileHeight {
@@ -162,7 +162,7 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 		}
 		// Set sprite tile
 		for i := range 4 {
-			loadSpriteTile(cpu, i, i)
+			g.loadSpriteTile(i, i)
 		}
 	}
 
@@ -170,7 +170,7 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 	frameOffset := (g.count / 20) & 3
 	tileID := [4][2]int{{0, 0}, {1, 2}, {0, 0}, {2, 1}}[frameOffset]
 	for i, src := range tileID {
-		loadBGTile(cpu, src, i|0x100)
+		g.loadBGTile(src, i|0x100)
 	}
 	g.count++
 
