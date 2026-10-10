@@ -16,10 +16,11 @@ type MMU struct {
 	wram    [0x2000]byte // In CGB, switchable
 	oam     [0xA0]byte
 	ioRegs  [0x80]byte
+	joypad  *JoyPad
 }
 
-func NewMMU(crt cartridge) *MMU {
-	return &MMU{crt: crt}
+func NewMMU(crt cartridge, joypad *JoyPad) *MMU {
+	return &MMU{crt: crt, joypad: joypad}
 }
 
 func (mmu *MMU) Write(addr uint16, data byte) {
@@ -34,8 +35,10 @@ func (mmu *MMU) Write(addr uint16, data byte) {
 		mmu.wram[addr-0xC000] = data
 	case addr >= 0xFE00 && addr < 0xFEA0:
 		mmu.oam[addr-0xFE00] = data
-	case addr >= 0xFF00 && addr < 0xFF80:
-		mmu.ioRegs[addr-0xFF00] = data
+	case addr == 0xFF00:
+		mmu.joypad.Write(data)
+	case addr >= 0xFF01 && addr < 0xFF80:
+		mmu.ioRegs[addr-0xFF01] = data
 	default:
 		slog.Error("not impl yet")
 	}
@@ -53,8 +56,10 @@ func (mmu *MMU) Read(addr uint16) byte {
 		return mmu.wram[addr-0xC000]
 	case addr >= 0xFE00 && addr < 0xFEA0:
 		return mmu.oam[addr-0xFE00]
-	case addr >= 0xFF00 && addr < 0xFF80:
-		return mmu.ioRegs[addr-0xFF00]
+	case addr == 0xFF00:
+		return mmu.joypad.Read()
+	case addr >= 0xFF01 && addr < 0xFF80:
+		return mmu.ioRegs[addr-0xFF01]
 	default:
 		slog.Error("not impl yet")
 		return 0xFF

@@ -129,9 +129,64 @@ const (
 	OAMFieldAttr
 )
 
-func WriteOAM(cpu *gamebro.CPU, id int, field OAMField, data byte) {
+type object struct {
+	PosX, PosY byte
+	TileId     byte
+	Attr       byte
+}
+
+// ObjectはWRAMから取得するべき
+func (g *DogGame) ReadObject(id int) object {
+	addr := uint16(0xFE00 + id<<2)
+	return object{
+		PosY:   g.cpu.Read(addr),
+		PosX:   g.cpu.Read(addr + 1),
+		TileId: g.cpu.Read(addr + 2),
+		Attr:   g.cpu.Read(addr + 3),
+	}
+}
+
+func (g *DogGame) writeOAM(id int, field OAMField, data byte) {
 	addr := uint16(0xFE00 + id<<2 + int(field))
-	cpu.Write(addr, data)
+	g.cpu.Write(addr, data)
+}
+
+func (g *DogGame) setDog(x, y, tileID, attr byte) {
+	g.writeOAM(0, OAMFieldPosX, x)
+	g.writeOAM(0, OAMFieldPosY, y)
+	g.writeOAM(0, OAMFieldTileId, tileID)
+	g.writeOAM(0, OAMFieldAttr, attr)
+	g.writeOAM(1, OAMFieldPosX, x+gamebro.TileSize)
+	g.writeOAM(1, OAMFieldPosY, y)
+	g.writeOAM(1, OAMFieldTileId, tileID+2)
+	g.writeOAM(1, OAMFieldAttr, attr)
+}
+
+func (g *DogGame) moveDog(dirs byte) {
+
+	dog1 := g.ReadObject(0)
+	dog2 := g.ReadObject(1)
+	if dirs&0x08 == 0 {
+		dog1.PosY++
+		dog2.PosY++
+	}
+	if dirs&0x04 == 0 {
+		dog1.PosY--
+		dog2.PosY--
+	}
+	g.writeOAM(0, OAMFieldPosY, dog1.PosY)
+	g.writeOAM(1, OAMFieldPosY, dog2.PosY)
+
+	if dirs&0x02 == 0 {
+		dog1.PosX--
+		dog2.PosX--
+	}
+	if dirs&0x01 == 0 {
+		dog1.PosX++
+		dog2.PosX++
+	}
+	g.writeOAM(0, OAMFieldPosX, dog1.PosX)
+	g.writeOAM(1, OAMFieldPosX, dog2.PosX)
 }
 
 func (g *DogGame) setTileMap(mapID, x, y int, tileID byte) {
@@ -169,6 +224,8 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 		for i := range 4 {
 			g.loadSpriteTile(i, i)
 		}
+		// Set OAM
+		g.setDog(8*11, 16*5, 0, 0x10)
 	}
 
 	// Set BG tile
@@ -179,13 +236,7 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 	}
 	g.count++
 
-	// Set OAM
-	WriteOAM(cpu, 0, OAMFieldPosY, 16*5)
-	WriteOAM(cpu, 0, OAMFieldPosX, 8*11)
-	WriteOAM(cpu, 0, OAMFieldTileId, 0)
-	WriteOAM(cpu, 0, OAMFieldAttr, 0x10)
-	WriteOAM(cpu, 1, OAMFieldPosY, 16*5)
-	WriteOAM(cpu, 1, OAMFieldPosX, 8*12)
-	WriteOAM(cpu, 1, OAMFieldTileId, 2)
-	WriteOAM(cpu, 1, OAMFieldAttr, 0x10)
+	g.cpu.Write(0xFF00, 0xEF)
+	dirs := g.cpu.Read(0xFF00)
+	g.moveDog(dirs)
 }
