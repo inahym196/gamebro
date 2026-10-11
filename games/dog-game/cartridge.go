@@ -195,7 +195,6 @@ func (g *DogGame) setTileMap(mapID, x, y int, tileID byte) {
 	g.cpu.Write(tmapAddr, tileID)
 }
 
-// TODO: ReadWriter依存にできないか？
 func (g *DogGame) Code(cpu *gamebro.CPU) {
 	if g.init {
 		g.init = false

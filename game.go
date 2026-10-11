@@ -12,6 +12,9 @@ const (
 func NewGame(crt cartridge) *Game {
 	joypad := NewJoyPad()
 	mmu := NewMMU(crt, joypad)
+	mmu.ioRegs[0x47] = 0b11100100
+	mmu.ioRegs[0x48] = 0b11100100
+	mmu.ioRegs[0x49] = 0b11010000
 	return &Game{
 		pbuf:   NewPixelBuffer(ScreenWidth, ScreenHeight),
 		cpu:    NewCPU(mmu),

@@ -38,7 +38,7 @@ func (mmu *MMU) Write(addr uint16, data byte) {
 	case addr == 0xFF00:
 		mmu.joypad.Write(data)
 	case addr >= 0xFF01 && addr < 0xFF80:
-		mmu.ioRegs[addr-0xFF01] = data
+		mmu.ioRegs[addr-0xFF00] = data
 	default:
 		slog.Error("not impl yet")
 	}
@@ -59,7 +59,7 @@ func (mmu *MMU) Read(addr uint16) byte {
 	case addr == 0xFF00:
 		return mmu.joypad.Read()
 	case addr >= 0xFF01 && addr < 0xFF80:
-		return mmu.ioRegs[addr-0xFF01]
+		return mmu.ioRegs[addr-0xFF00]
 	default:
 		slog.Error("not impl yet")
 		return 0xFF

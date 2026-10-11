@@ -86,16 +86,10 @@ func (ppu *PPU) renderBGLine(ly int) {
 	}
 }
 
-type IORegsField uint16
-
 const (
-	IORegsOBP0 IORegsField = 0xFF48
-	IORegsOBP1 IORegsField = 0xFF49
+	IORegsOBP0 uint16 = 0xFF48
+	IORegsOBP1 uint16 = 0xFF49
 )
-
-func ReadIORegs(mmu *MMU, field IORegsField) byte {
-	return mmu.Read(uint16(field))
-}
 
 type object struct {
 	PosX, PosY byte
@@ -124,9 +118,9 @@ func (ppu *PPU) renderSpriteLine(ly int) error {
 
 	for i := range 40 {
 		object := ReadObject(ppu.mmu, i)
-		palette := byte(0b11100100) //ReadIORegs(ppu.mmu, IORegsOBP0)
+		palette := ppu.mmu.Read(IORegsOBP0)
 		if object.Attr&0x10 > 0 {
-			palette = 0b11010000 //ReadIORegs(ppu.mmu, IORegsOBP1)
+			palette = ppu.mmu.Read(IORegsOBP1)
 		}
 
 		spriteY := int(object.PosY) - 16
