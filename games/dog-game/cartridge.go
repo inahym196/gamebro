@@ -72,6 +72,12 @@ const (
 	WinBaseAddr     uint16 = 0x3000
 )
 
+const (
+	AddrPlayerPosX uint16 = 0xC000 + iota
+	AddrPlayerPosY
+	AddrPlayerDir
+)
+
 func (g *DogGame) readRomTile(base uint16) (tile [BytesPerTile]byte) {
 	for i := range BytesPerTile {
 		tile[i] = g.cpu.Read(base + uint16(i))
@@ -120,73 +126,89 @@ func (g *DogGame) loadSpriteTile(srcId, dstId int) {
 	g.writeTileByID(dstId, tile)
 }
 
-type OAMField int
-
-const (
-	OAMFieldPosY OAMField = iota
-	OAMFieldPosX
-	OAMFieldTileId
-	OAMFieldAttr
-)
-
 type object struct {
 	PosX, PosY byte
 	TileId     byte
 	Attr       byte
 }
 
-// ObjectはWRAMから取得するべき
-func (g *DogGame) ReadObject(id int) object {
-	addr := uint16(0xFE00 + id<<2)
-	return object{
-		PosY:   g.cpu.Read(addr),
-		PosX:   g.cpu.Read(addr + 1),
-		TileId: g.cpu.Read(addr + 2),
-		Attr:   g.cpu.Read(addr + 3),
+type Direction int
+
+const (
+	DirNil = iota
+	DirLeft
+	DirRight
+)
+
+type metaSprite2 struct {
+	objs [2]object
+	dir  Direction
+}
+
+func NewPlayer(x, y byte, dir Direction) metaSprite2 {
+	meta2 := metaSprite2{
+		objs: [2]object{
+			{x, y, 0, 0x10},
+			{x + 8, y, 2, 0x10},
+		},
+		dir: dir,
 	}
+	if dir == DirRight {
+		meta2.objs[0].TileId, meta2.objs[1].TileId = meta2.objs[1].TileId, meta2.objs[0].TileId
+		meta2.objs[0].Attr |= 0x20
+		meta2.objs[1].Attr |= 0x20
+	}
+	return meta2
 }
 
-func (g *DogGame) writeOAM(id int, field OAMField, data byte) {
-	addr := uint16(0xFE00 + id<<2 + int(field))
-	g.cpu.Write(addr, data)
-}
-
-func (g *DogGame) setDog(x, y, tileID, attr byte) {
-	g.writeOAM(0, OAMFieldPosX, x)
-	g.writeOAM(0, OAMFieldPosY, y)
-	g.writeOAM(0, OAMFieldTileId, tileID)
-	g.writeOAM(0, OAMFieldAttr, attr)
-	g.writeOAM(1, OAMFieldPosX, x+gamebro.TileSize)
-	g.writeOAM(1, OAMFieldPosY, y)
-	g.writeOAM(1, OAMFieldTileId, tileID+2)
-	g.writeOAM(1, OAMFieldAttr, attr)
-}
-
-func (g *DogGame) moveDog(dirs byte) {
-
-	dog1 := g.ReadObject(0)
-	dog2 := g.ReadObject(1)
+func calcDelta(dirs byte) (dx, dy byte, dir Direction) {
+	dir = DirNil
 	if dirs&0x08 == 0 {
-		dog1.PosY++
-		dog2.PosY++
+		dy++
 	}
 	if dirs&0x04 == 0 {
-		dog1.PosY--
-		dog2.PosY--
+		dy--
 	}
-	g.writeOAM(0, OAMFieldPosY, dog1.PosY)
-	g.writeOAM(1, OAMFieldPosY, dog2.PosY)
-
 	if dirs&0x02 == 0 {
-		dog1.PosX--
-		dog2.PosX--
+		dx--
+		dir = DirLeft
 	}
 	if dirs&0x01 == 0 {
-		dog1.PosX++
-		dog2.PosX++
+		dx++
+		dir = DirRight
 	}
-	g.writeOAM(0, OAMFieldPosX, dog1.PosX)
-	g.writeOAM(1, OAMFieldPosX, dog2.PosX)
+	return dx, dy, dir
+}
+
+func (meta2 metaSprite2) Move(dirs byte) metaSprite2 {
+	dx, dy, dir := calcDelta(dirs)
+	meta2.objs[0].PosX += dx
+	meta2.objs[1].PosX += dx
+	meta2.objs[0].PosY += dy
+	meta2.objs[1].PosY += dy
+	if dir != DirNil {
+		meta2.dir = dir
+	}
+	return meta2
+}
+
+func (meta2 metaSprite2) WriteWRAM(cpu *gamebro.CPU) {
+	cpu.Write(AddrPlayerPosX, meta2.objs[0].PosX)
+	cpu.Write(AddrPlayerPosY, meta2.objs[0].PosY)
+	cpu.Write(AddrPlayerDir, byte(meta2.dir))
+}
+
+func writeOAM(cpu *gamebro.CPU, id int, obj object) {
+	addr := uint16(0xFE00 + id<<2)
+	cpu.Write(addr, obj.PosY)
+	cpu.Write(addr+1, obj.PosX)
+	cpu.Write(addr+2, obj.TileId)
+	cpu.Write(addr+3, obj.Attr)
+}
+
+func (meta2 metaSprite2) WriteOAM(cpu *gamebro.CPU) {
+	writeOAM(cpu, 0, meta2.objs[0])
+	writeOAM(cpu, 1, meta2.objs[1])
 }
 
 func (g *DogGame) setTileMap(mapID, x, y int, tileID byte) {
@@ -224,7 +246,8 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 			g.loadSpriteTile(i, i)
 		}
 		// Set OAM
-		g.setDog(8*11, 16*5, 0, 0x10)
+		dog := NewPlayer(8*11, 16*5, DirLeft)
+		dog.WriteWRAM(g.cpu)
 	}
 
 	// Set BG tile
@@ -235,7 +258,14 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 	}
 	g.count++
 
+	dog := NewPlayer(
+		g.cpu.Read(AddrPlayerPosX),
+		g.cpu.Read(AddrPlayerPosY),
+		Direction(g.cpu.Read(AddrPlayerDir)),
+	)
+
 	g.cpu.Write(0xFF00, 0xEF)
-	dirs := g.cpu.Read(0xFF00)
-	g.moveDog(dirs)
+	dog = dog.Move(g.cpu.Read(0xFF00))
+	dog.WriteWRAM(g.cpu)
+	dog.WriteOAM(g.cpu)
 }

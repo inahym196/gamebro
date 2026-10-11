@@ -118,6 +118,7 @@ func (ppu *PPU) renderSpriteLine(ly int) error {
 
 	for i := range 40 {
 		object := ReadObject(ppu.mmu, i)
+		flipX := object.Attr&0x20 > 0
 		palette := ppu.mmu.Read(IORegsOBP0)
 		if object.Attr&0x10 > 0 {
 			palette = ppu.mmu.Read(IORegsOBP1)
@@ -151,6 +152,9 @@ func (ppu *PPU) renderSpriteLine(ly int) error {
 			screenX := baseX + i
 			if screenX < 0 || screenX > ScreenWidth {
 				continue
+			}
+			if flipX {
+				cid = cids[7-i]
 			}
 			if cid == 0 {
 				continue
