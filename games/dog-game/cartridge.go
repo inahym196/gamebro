@@ -76,6 +76,7 @@ const (
 	AddrPlayerPosX uint16 = 0xC000 + iota
 	AddrPlayerPosY
 	AddrPlayerDir
+	AddrPlayerCount
 )
 
 type object struct {
@@ -93,17 +94,19 @@ const (
 )
 
 type metaSprite2 struct {
-	objs [2]object
-	dir  Direction
+	objs  [2]object
+	dir   Direction
+	count uint8
 }
 
-func NewPlayer(x, y byte, dir Direction) metaSprite2 {
+func NewPlayer(x, y byte, dir Direction, count uint8) metaSprite2 {
 	meta2 := metaSprite2{
 		objs: [2]object{
 			{x, y, 0, 0x10},
 			{x + 8, y, 2, 0x10},
 		},
-		dir: dir,
+		dir:   dir,
+		count: count,
 	}
 	if dir == DirRight {
 		meta2.objs[0].TileId, meta2.objs[1].TileId = meta2.objs[1].TileId, meta2.objs[0].TileId
@@ -138,16 +141,24 @@ func (meta2 metaSprite2) Move(dirs byte) metaSprite2 {
 	meta2.objs[1].PosX += dx
 	meta2.objs[0].PosY += dy
 	meta2.objs[1].PosY += dy
-	if dir != DirNil {
+	if dx == 0 && dy == 0 {
+		meta2.count = 0xFF
+	} else {
 		meta2.dir = dir
+		meta2.count++
 	}
 	return meta2
+}
+
+func (meta2 metaSprite2) Jumped() bool {
+	return meta2.count/16&1 == 0
 }
 
 func (meta2 metaSprite2) WriteWRAM(cpu *gamebro.CPU) {
 	cpu.Write(AddrPlayerPosX, meta2.objs[0].PosX)
 	cpu.Write(AddrPlayerPosY, meta2.objs[0].PosY)
 	cpu.Write(AddrPlayerDir, byte(meta2.dir))
+	cpu.Write(AddrPlayerCount, meta2.count)
 }
 
 func writeOAM(cpu *gamebro.CPU, id int, obj object) {
@@ -198,7 +209,7 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 			g.loadSpriteTile(i, i)
 		}
 		// Set OAM
-		dog := NewPlayer(8*11, 16*5, DirLeft)
+		dog := NewPlayer(8*11, 16*5, DirLeft, 0)
 		dog.WriteWRAM(g.cpu)
 	}
 
@@ -214,10 +225,18 @@ func (g *DogGame) Code(cpu *gamebro.CPU) {
 		g.cpu.Read(AddrPlayerPosX),
 		g.cpu.Read(AddrPlayerPosY),
 		Direction(g.cpu.Read(AddrPlayerDir)),
+		g.cpu.Read(AddrPlayerCount),
 	)
 
 	g.cpu.Write(0xFF00, 0xEF)
 	dog = dog.Move(g.cpu.Read(0xFF00))
+	if dog.Jumped() {
+		g.loadSpriteTile(4, 1)
+		g.loadSpriteTile(5, 3)
+	} else {
+		g.loadSpriteTile(1, 1)
+		g.loadSpriteTile(3, 3)
+	}
 	dog.WriteWRAM(g.cpu)
 	dog.WriteOAM(g.cpu)
 }
